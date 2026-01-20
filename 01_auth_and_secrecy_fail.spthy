@@ -1,15 +1,13 @@
 /*
- * Protocol:   Toy example using DH
+This protocol is a classic example of a Man-in-the-Middle (MitM) vulnerability.
+Authentication Fails: Even though B encrypts G_B for A ( aenc(G_B, pkA)), 
+there is no binding to G_A.
+An attacker can intercept A's G_A, substitute it with their own exponent G_M, 
+and perform a separate DH exchange with B. 
 
- Assumptions
-- Long-term signing keys for A and B
-- Ephemeral DH exponents
-- Signatures authenticate DH shares
-
-We want to check:
-- Secrecy: The attacker never learns the session key K
-- Authentication: If B finishes a session apparently with A, then A previously started a session with B using the same DH share
-
+Secrecy Fails: The session key is derived from the DH exchange (G_BA = G_B^~a).
+Since authentication fails, an attacker can establish separate keys with A and B,
+allowing them to decrypt and access the session key ~s that A sends encrypted under G_BA.
 */
 
 theory example
@@ -17,12 +15,6 @@ theory example
 begin
 
 builtins: diffie-hellman, symmetric-encryption, asymmetric-encryption, signing
-
-functions:
-    checksign/2
-
-equations:
-    checksign(sign(m, sk), pk(sk)) = m
 
 #include "headers.splib"
 
@@ -48,26 +40,20 @@ let clientA(~skA, pkA, pkB) =
     out(m1);
 
     in(m2);
-    let sigB = adec(m2, ~skA) in
-    let <G_B, pkB_in> = sigB in
+    let G_B = adec(m2, ~skA) in
 
-    // verify B's signature
-    if (verify(sigB, <G_B, pkB_in>, pkB) = true) then
-        let G_BA = G_B^~a in
-        event AcceptsClient(G_BA);
-        new ~s;
-        event SecretS(~s);
-        (
-            leakKey(~s)
-            |
-            let sigA = sign(<G_BA, pkA>, ~skA) in
-            let m3 = senc(<~s, sigA>, G_BA) in
-            out(m3);
-            event TermClient(G_BA, pkA);
-            0
-        )
-    else
+    let G_BA = G_B^~a in
+    event AcceptsClient(G_BA);
+    new ~s;
+    event SecretS(~s);
+    (
+        leakKey(~s)
+        |
+        let m3 = senc(~s, G_BA) in
+        out(m3);
+        event TermClient(G_BA, pkA);
         0
+    )
 
 
 let serverB(~skB, pkB, pkA) = 
@@ -78,26 +64,18 @@ let serverB(~skB, pkB, pkA) =
     let G_AB = G_A^~b in
 
     event AcceptsServer(G_AB, pkA);
-    // sign identity + key
-    let sigB = sign(<G_B, pkB>, ~skB) in
 
     // Encyrpt signature under A's public key
-    let m2 = aenc(sigB, pkA) in
+    let m2 = aenc(G_B, pkA) in
     out(m2);
 
     in(m3);
-    let <s, sigA> = sdec(m3, G_AB) in
-    (
-        leakKey(s)
-        |
-        if verify(sigA, <G_AB, pkA>, pkA) = true then
-            event TermServer(G_AB);
-            0
-        else
-            0
-    )
+    let s = sdec(m3, G_AB) in
+    event TermServer(G_AB);
+    0
 
-#include "properties.splib"
+
+#include "01properties.splib"
 
 process:
     new ~skA; // A's long-term signing secret key

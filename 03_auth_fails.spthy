@@ -1,18 +1,13 @@
 /*
- * Protocol:   Toy example using DH
-
- Assumptions
-- Long-term signing keys for A and B
-- Ephemeral DH exponents
-- Signatures authenticate DH shares
-
-We want to check:
-- Secrecy: The attacker never learns the session key K
-- Authentication: If B finishes a session apparently with A, then A previously started a session with B using the same DH share
-
+How to make Authentication fail:
+- clientA, we verify a signature on <G_B, pkB_in>, but we dont verify that B signed clientA's specific contribution ($G_A$).
+Because G_A is missing from the signed message msgB, an attacker can perform a Replay Attack or a Reflection Attack:
+    - The attacker intercepts B's response to any session. The attacker sends that same G_B and signature to A. 
+    - A checks the signature, sees it is valid for G_B, and accepts. 
+    - However, B never actually agreed to a session with this specific G_A. 
 */
 
-theory example
+theory dh_auth_fails
 
 begin
 
@@ -42,20 +37,20 @@ let clientA(~skA, pkA, pkB) =
     out(m1);
 
     in(m2);
-    let sigB = adec(m2, ~skA) in
-    let <G_B, pkB_in> = sigB in
+    let encrypted_payload = adec(m2, ~skA) in
+    let <G_B, sigB> = encrypted_payload in
 
     // verify B's signature
-    if (verify(sigB, <G_B, pkB_in>, pkB) = true) then
+    if (verify(sigB, G_B, pkB) = true) then
         let G_BA = G_B^~a in
         event AcceptsClient(G_BA);
         new ~s;
         event SecretS(~s);
-        out(~s);
-        let sigA = sign(<G_BA, pkA>, ~skA) in
-        let m3 = senc(<~s, sigA>, G_BA) in
+        let m3 = senc(~s, G_BA) in
         out(m3);
         event TermClient(G_BA, pkA);
+        0
+    else
         0
 
 
@@ -67,22 +62,20 @@ let serverB(~skB, pkB, pkA) =
     let G_AB = G_A^~b in
 
     event AcceptsServer(G_AB, pkA);
-    // sign identity + key
-    let sigB = sign(<G_B, pkB>, ~skB) in
 
+    let sigB = sign(G_B, ~skB) in
     // Encyrpt signature under A's public key
-    let m2 = aenc(sigB, pkA) in
+    let m2 = aenc(<G_B, sigB>, pkA) in
     out(m2);
 
     in(m3);
-    let <s, sigA> = sdec(m3, G_AB) in
-    if verify(sigA, <G_AB, pkA>, pkA) = true then
-        event TermServer(G_AB);
+    let s = sdec(m3, G_AB) in
+    // No verification -> Auth fails
+    event TermServer(G_AB);
         0
-    else
-        0
+    
 
-#include "properties.splib"
+#include "03properties.splib"
 
 process:
     new ~skA; // A's long-term signing secret key

@@ -1,0 +1,36 @@
+// Executability (Sanity Check)
+lemma exists_session_server:
+  exists-trace
+  "Ex k #i . TermServer(k)@i"
+
+lemma exists_session_client:
+  exists-trace
+  "Ex k pkA #i . TermClient(k, pkA)@i"
+
+// Authentictaion of A to B. 
+// It holds since Client cannot Terminante unless the Server sent k.
+//This shows the client is not fooled: if it finishes, the server must have run.
+
+lemma ClientTerminatesImpliesServerAccepted:
+    "All k pkA #i.
+     TermClient(k, pkA)@i
+     ==>
+     (Ex #j. AcceptsServer(k, pkA)@j & j < i)
+    "
+// Authentication B to A
+// Whenever the server terminates on key k1,the client must have accepted that key earlier.   
+lemma ServerTerminatesImpliesClientAccepted:
+    "All k #i.
+     TermServer(k)@i
+     ==>
+     (Ex #j. AcceptsClient(k)@j & j < i)
+    "
+
+
+// Secrecy
+lemma SecretS_secrecy:
+    "All s #i.
+     SecretS(s)@i
+     ==>
+     not (Ex #j. KU(s)@j)
+    "

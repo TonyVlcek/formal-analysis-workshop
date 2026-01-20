@@ -1,28 +1,12 @@
 /*
- * Protocol:   Toy example using DH
-
- Assumptions
-- Long-term signing keys for A and B
-- Ephemeral DH exponents
-- Signatures authenticate DH shares
-
-We want to check:
-- Secrecy: The attacker never learns the session key K
-- Authentication: If B finishes a session apparently with A, then A previously started a session with B using the same DH share
-
+Diffie-Hellman Key Exchange Protocol with Secrecy Failure
 */
 
-theory example
+theory dh_secrecy_fails
 
 begin
 
 builtins: diffie-hellman, symmetric-encryption, asymmetric-encryption, signing
-
-functions:
-    checksign/2
-
-equations:
-    checksign(sign(m, sk), pk(sk)) = m
 
 #include "headers.splib"
 
@@ -48,25 +32,29 @@ let clientA(~skA, pkA, pkB) =
     out(m1);
 
     in(m2);
-    let sigB = adec(m2, ~skA) in
-    let <G_B, pkB_in> = sigB in
+    let encrypted_payload = adec(m2, ~skA) in
+    let <msgB, sigB> = encrypted_payload in
+    let <G_A_in, G_B, pkB_in> = msgB in
+
+    // new ~s;
+    // out(~s); // Leak the secret s
+    // event SecretS(~s);
 
     // verify B's signature
-    if (verify(sigB, <G_B, pkB_in>, pkB) = true) then
+    if (verify(sigB, msgB, pkB) = true & G_A_in = G_A) then
         let G_BA = G_B^~a in
-        event AcceptsClient(G_BA);
+
         new ~s;
+        out(~s); // Leak the secret s
         event SecretS(~s);
-        (
-            leakKey(~s)
-            |
-            let m3 = senc(~s, G_BA) in
-            out(m3);
-            event TermClient(G_BA, pkA);
-            0
-        )
-    else
+        event AcceptsClient(G_BA);
+        
+        let sigA = sign(<G_BA, pkA>, ~skA) in
+        let m3 = senc(<~s, sigA>, G_BA) in
+        out(m3);
+        event TermClient(G_BA, pkA);
         0
+        
 
 
 let serverB(~skB, pkB, pkA) = 
@@ -78,22 +66,22 @@ let serverB(~skB, pkB, pkA) =
 
     event AcceptsServer(G_AB, pkA);
     // sign identity + key
-    let sigB = sign(<G_B, pkB>, ~skB) in
+    let msgB = <G_A, G_B, pkB> in
+    let sigB = sign(msgB, ~skB) in
 
     // Encyrpt signature under A's public key
-    let m2 = aenc(sigB, pkA) in
+    let m2 = aenc(<msgB, sigB>, pkA) in
     out(m2);
 
     in(m3);
-    let s = sdec(m3, G_AB) in
-    (
-        leakKey(s)
-        |
+    let <s, sigA> = sdec(m3, G_AB) in
+    if verify(sigA, <G_AB, pkA>, pkA) = true then
         event TermServer(G_AB);
-            0
-    )
+        0
+    else
+        0
 
-#include "properties.splib"
+#include "02properties.splib"
 
 process:
     new ~skA; // A's long-term signing secret key

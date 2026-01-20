@@ -1,15 +1,13 @@
 export queries:
  "
 set preciseActions=true.
-set simplifyProcess = false.
-set reconstructTrace = false.
 "
+// set simplifyProcess = false.
+// set reconstructTrace = false.
 
-export queries:
-"
-free s : bitstring [ private ] .
-query attacker ( s ) .
-"
+// free s : bitstring [ private ] .
+// query attacker ( s ) .
+
 
 #ifdef LeakKey
 let leakKey(s) =
