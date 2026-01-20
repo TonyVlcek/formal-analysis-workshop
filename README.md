@@ -52,8 +52,55 @@ This repository contains a set of small, simplified protocol models written in S
 - Expected result: Both Secrecy and Authentication are verified.
 - Teaching point: Secure key exchange requires binding ephemeral shares to long-term identities.
 
-## How to Run
+## How to Run (without Docker)
 
 ```bash
-tamarin-prover --sapic 04_auth_and_secrecy_hold.spthy --prove
+tamarin-prover 04_auth_and_secrecy_hold.spthy --prove
 ```
+
+## 🛠️ Setup (Docker Recommended)
+
+To avoid installing Maude, Tamarin, and ProVerif manually, use the provided Docker environment.
+
+### 1. Prerequisites
+
+- Install Docker Desktop.
+- Windows Users: Open Docker Desktop Settings > Resources > WSL Integration and ensure integration is enabled for your Ubuntu/Debian distro.
+
+### 2. Launch the Workshop
+
+Open your terminal in the root folder and run:
+
+```bash
+docker-compose up --build
+```
+Once the logs show Application launched, open your browser to: http://localhost:3001 
+
+## How to Run Analysis
+
+### Option A: Interactive GUI
+
+1. Open the web link above.
+2. Click on any .spthy file to load the theory.
+3. Click on a Lemma (e.g., secrecy or authentication).
+4. Select "Autoprove" to let Tamarin find the proof or the attack.
+5. Live Editing: You can edit the files in VS Code on your computer. Simply click "Reload" in the web GUI to see your changes instantly.
+
+### Option B: Command Line (CLI)
+
+If you prefer the terminal, you can run commands through docker-compose without stopping the GUI. 
+Open a new terminal window and use:
+
+#### To prove a specific file:
+
+```bash
+hdocker-compose exec tamarin tamarin-prover 04_auth_and_secrecy_hold.spthy --prove
+```
+
+#### To run a manual command inside the container
+
+```bash
+hdocker-compose exec tamarin /bin/bash
+```
+
+## 🛑 Troubleshooting

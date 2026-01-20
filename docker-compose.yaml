@@ -1,0 +1,17 @@
+services:
+  tamarin:
+    build:
+      context: .
+      dockerfile: Docker/Dockerfile
+    image: formal-workshop
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/workshop
+    # This environment variable ensures Maude finds its prelude file
+    environment:
+      - MAUDE_LIB=/opt/maude_dir
+    command: tamarin-prover interactive . --interface=0.0.0.0
+
+# To run: docker-compose up --buil
+# Then access Tamarin at http://localhost:3001 (if WSL, do hostname -I and then run docker-compose with that IP instead of localhost)

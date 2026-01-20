@@ -10,7 +10,7 @@ Since authentication fails, an attacker can establish separate keys with A and B
 allowing them to decrypt and access the session key ~s that A sends encrypted under G_BA.
 */
 
-theory example
+theory auth_and_secrecy_fail
 
 begin
 
